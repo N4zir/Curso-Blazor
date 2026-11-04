@@ -1,0 +1,61 @@
+@page "/catalog"
+
+
+<h1 class="text-red-500 text-5xl">
+    Hola mundo
+</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @foreach (var cafe in lstCafe)
+    {
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden hover:scale-110 transition">
+            <img src="@cafe.Imagen" alt="@cafe.Nombre" class="w-full h-84 object-cover rounded-lg" />
+
+            <div class="p-4">
+                <h2 class="text-xl font-bold">@cafe.Nombre</h2>
+
+                <p class="text-gray-600 mt-2">
+                    @cafe.Descripcion
+                </p>
+
+                <p class="text-green-700 text-lg font-semibold mt-3">
+                    Bs. @cafe.Precio.ToString("0.00")
+                </p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    class Cafe
+{
+    public string Nombre { get; set; } = "";
+    public string Descripcion { get; set; } = "";
+    public double Precio { get; set; }
+    public string Imagen { get; set; } = "";
+}
+    private List<Cafe> lstCafe = new List<Cafe>()
+    {
+        new Cafe
+        {
+            Nombre = "Americanon",
+            Descripcion = "Café negro tradicional",
+            Precio = 10,
+            Imagen = "https://tse1.mm.bing.net/th/id/OIP.BSP4bZJ0kWXLzrBgU_L0IQHaE8?r=0&rs=1&pid=ImgDetMain&o=7&rm=3"
+        },
+        new Cafe
+        {
+            Nombre = "Capuccino",
+            Descripcion = "Café con leche espumosa",
+            Precio = 15,
+            Imagen = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmagtheweekly.com%2Fassets%2Fuploads%2Fupdates%2F2026-11-06%2F27803_105357_updates.jpg&f=1&nofb=1&ipt=431b3dd748d2c7fffb1648278ec585684399d554f9603ffca724563325ce365c&ipo=images"
+        },
+        new Cafe
+        {
+            Nombre = "Espresso",
+            Descripcion = "Shot de cafe fuerte",
+            Precio = 12,
+            Imagen = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftwochimpscoffee.com%2Fwp-content%2Fuploads%2F2023%2F01%2Fperfect-crema-2-scaled.jpg&f=1&nofb=1&ipt=190673a7808ce67097e49bf720db9fa6425b00155df12a261984cb4f35c37c02&ipo=images"
+        }
+};
+}
