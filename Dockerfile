@@ -6,12 +6,12 @@ COPY --from=node:22-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack \
     && corepack enable pnpm
  
-COPY sharpness-sharp.csproj ./
+COPY CumbreSalonesCongresos.csproj ./
 RUN dotnet restore
  
 COPY . .
 RUN pnpm install && node_modules/.bin/tailwindcss -i ./Styles/tailwind.css -o ./wwwroot/app.css --minify
-RUN dotnet publish sharpness-sharp.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish CumbreSalonesCongresos.csproj -c Release -o /app/publish --no-restore
  
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
