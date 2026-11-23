@@ -1,0 +1,48 @@
+@page "/contacto"
+@inject CotizacionService CotizacionService
+
+<PageTitle>Contacto | Cumbre Salones y Congresos</PageTitle>
+<h1 class="text-3xl font-bold">Contacto y alianzas</h1>
+<p class="mt-2 text-slate-700">Cuéntanos sobre tu evento o interés en convenios y nuestro equipo te responderá.</p>
+
+@if (enviado)
+{
+  <div class="ui-alert ui-alert-ok mt-6">¡Gracias! Hemos recibido tu solicitud (N° @numero). Te contactaremos pronto.</div>
+}
+else
+{
+  <EditForm Model="form" OnValidSubmit="Enviar" FormName="contacto-form" class="mt-6 max-w-2xl space-y-4 ui-card p-6">
+    <DataAnnotationsValidator />
+    <div class="ui-field"><label class="ui-label">Nombre / Entidad</label><InputText class="ui-input" @bind-Value="form.Nombre" /></div>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="ui-field"><label class="ui-label">Email</label><InputText class="ui-input" @bind-Value="form.Email" /></div>
+      <div class="ui-field"><label class="ui-label">Teléfono</label><InputText class="ui-input" @bind-Value="form.Telefono" /></div>
+    </div>
+    <div class="ui-field"><label class="ui-label">Mensaje / requerimiento</label><InputTextArea class="ui-input" rows="4" @bind-Value="form.Mensaje" /></div>
+    <button class="ui-btn ui-btn-primary" type="submit">Enviar</button>
+  </EditForm>
+}
+
+@code {
+  private bool enviado; private string? numero;
+  [SupplyParameterFromForm] private ContactoForm form { get; set; } = new();
+
+  private async Task Enviar()
+  {
+    var c = new Cotizacion
+    {
+      SolicitanteNombre = form.Nombre,
+      SolicitanteEmail = form.Email,
+      SolicitanteTelefono = form.Telefono,
+      Entidad = form.Nombre,
+      TipoEvento = TipoEvento.Empresarial,
+      CantidadPersonas = 0,
+      ServiciosSolicitados = "Contacto/alianza: " + form.Mensaje,
+      Estado = EstadoCotizacion.Enviada
+    };
+    var res = await CotizacionService.CrearSolicitudAsync(c);
+    if (res.Ok && res.Value is not null) { enviado = true; numero = res.Value.Numero; }
+  }
+
+  private class ContactoForm { public string? Nombre { get; set; } public string? Email { get; set; } public string? Telefono { get; set; } public string? Mensaje { get; set; } }
+}

@@ -7,9 +7,9 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using sharpness_sharp.Components.Account.Pages;
-using sharpness_sharp.Components.Account.Pages.Manage;
-using sharpness_sharp.Data;
+using CumbreSalonesCongresos.Components.Account.Pages;
+using CumbreSalonesCongresos.Components.Account.Pages.Manage;
+using CumbreSalonesCongresos.Data;
 
 namespace Microsoft.AspNetCore.Routing;
 

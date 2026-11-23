@@ -1,0 +1,27 @@
+@page "/cliente/historial"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject EventoService EventoService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Historial</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Historial de eventos</h1>
+<div class="mt-4 space-y-3">
+@foreach(var e in items){
+  <div class="ui-card p-4"><div class="font-semibold">@e.Titulo</div><div class="text-sm text-slate-600">@e.Tipo · @e.FechaInicio:d - @e.FechaFin:d · @e.Estado</div></div>
+}
+@if(!items.Any()){<p class="text-slate-500">Aún no tienes eventos finalizados.</p>}
+</div>
+@code {
+  private List<Evento> items = new();
+  protected override async Task OnInitializedAsync()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    var cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is not null) items = await EventoService.HistorialClienteAsync(cliente.Id);
+  }
+}

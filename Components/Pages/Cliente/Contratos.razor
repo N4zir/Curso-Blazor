@@ -1,0 +1,34 @@
+@page "/cliente/contratos"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject EventoService EventoService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Mis contratos</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Mis contratos</h1>
+<div class="mt-4 space-y-3">
+@foreach (var c in items)
+{
+  <div class="ui-card p-4 flex items-center justify-between">
+    <div>
+      <div class="font-semibold">@c.Numero <span class="ml-2 text-xs rounded bg-slate-100 px-2 py-0.5">@c.Estado</span></div>
+      <div class="text-sm text-slate-600">Evento: @c.Evento?.Titulo · Monto: $@c.MontoTotal · @c.Fecha:d</div>
+    </div>
+    @if(!string.IsNullOrWhiteSpace(c.DocumentoUrl)){<a class="ui-btn ui-btn-soft" href="@c.DocumentoUrl" target="_blank">Descargar</a>}
+  </div>
+}
+@if(!items.Any()){<p class="text-slate-500">No hay contratos disponibles.</p>}
+</div>
+@code {
+  private List<Contrato> items = new();
+  protected override async Task OnInitializedAsync()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    var cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is not null) items = await EventoService.ContratosPorClienteAsync(cliente.Id);
+  }
+}

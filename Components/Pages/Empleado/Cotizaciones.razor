@@ -1,0 +1,67 @@
+@page "/empleado/cotizaciones"
+@attribute [Authorize(Policy = "PortalEmpleado")]
+@inject CotizacionService CotizacionService
+@inject ReservaService ReservaService
+
+<PageTitle>Gestión de cotizaciones</PageTitle>
+<PortalEmpleadoNav />
+<h1 class="text-2xl font-bold">Cotizaciones</h1>
+
+@if (!string.IsNullOrWhiteSpace(msg)) { <div class="ui-alert @(ok ? "ui-alert-ok" : "ui-alert-error") mt-4">@msg</div> }
+
+<div class="mt-4 space-y-3">
+  @foreach (var c in items)
+  {
+    <article class="ui-card p-4">
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="space-y-1 text-sm">
+          <div class="font-semibold text-base">@c.Numero <span class="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs">@c.Estado</span></div>
+          <div><strong>Solicitante:</strong> @(c.Cliente?.NombreRazonSocial ?? c.SolicitanteNombre) (@c.SolicitanteEmail) @c.SolicitanteTelefono</div>
+          <div><strong>Entidad:</strong> @c.Entidad · <strong>Tipo:</strong> @c.TipoEvento · <strong>Personas:</strong> @c.CantidadPersonas</div>
+          <div><strong>Salón:</strong> @c.Salon?.Nombre · <strong>Fechas:</strong> @c.FechaTentativaInicio?.ToString("g") - @c.FechaTentativaFin?.ToString("g")</div>
+          <div><strong>Servicios:</strong> @c.ServiciosSolicitados</div>
+          <div><strong>Obs:</strong> @c.Observaciones</div>
+        </div>
+        <div class="w-full max-w-sm space-y-2">
+          <label class="ui-label">Monto estimado</label>
+          <input class="ui-input" type="number" step="0.01" value="@c.MontoEstimado" @onchange="e => SetMonto(c.Id, e.Value?.ToString())" />
+          <div class="flex flex-wrap gap-2">
+            <button class="ui-btn ui-btn-soft" @onclick='() => CambiarEstado(c.Id, EstadoCotizacion.EnRevision)'>En revisión</button>
+            <button class="ui-btn ui-btn-primary" @onclick='() => CambiarEstado(c.Id, EstadoCotizacion.Aprobada)'>Aprobar</button>
+            <button class="ui-btn ui-btn-soft" @onclick='() => CambiarEstado(c.Id, EstadoCotizacion.Rechazada)'>Rechazar</button>
+          </div>
+          @if (c.Estado == EstadoCotizacion.Aprobada)
+          {
+            <button class="ui-btn ui-btn-primary w-full" @onclick="() => Convertir(c.Id)">Convertir a reserva + evento + contrato</button>
+          }
+        </div>
+      </div>
+    </article>
+  }
+  @if (!items.Any()) { <p class="text-slate-500">No hay cotizaciones.</p> }
+</div>
+
+@code {
+  private List<Cotizacion> items = new();
+  private Dictionary<int, decimal> montos = new();
+  private string? msg; private bool ok;
+
+  protected override async Task OnInitializedAsync() => await Cargar();
+  private async Task Cargar() => items = await CotizacionService.ListarGestionAsync();
+  private void SetMonto(int id, string? val) { if (decimal.TryParse(val, out var m)) montos[id] = m; }
+
+  private async Task CambiarEstado(int id, EstadoCotizacion estado)
+  {
+    montos.TryGetValue(id, out var monto);
+    var r = await CotizacionService.ActualizarEstadoAsync(id, estado, monto > 0 ? monto : null);
+    ok = r.Ok; msg = r.Ok ? $"Cotización actualizada a {estado}." : r.Error;
+    await Cargar();
+  }
+
+  private async Task Convertir(int id)
+  {
+    var r = await ReservaService.ConvertirCotizacionAsync(id);
+    ok = r.Ok; msg = r.Ok ? $"Convertida: reserva #{r.Value!.reserva.Id}, evento #{r.Value!.evento.Id}, contrato {r.Value!.contrato.Numero}." : r.Error;
+    await Cargar();
+  }
+}

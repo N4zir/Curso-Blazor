@@ -1,0 +1,35 @@
+@page "/empleado"
+@attribute [Authorize(Policy = "PortalEmpleado")]
+@inject CotizacionService CotizacionService
+@inject ReservaService ReservaService
+
+<PageTitle>Gestión | Cumbre Salones y Congresos</PageTitle>
+<PortalEmpleadoNav />
+<h1 class="text-2xl font-bold">Panel de gestión</h1>
+<p class="text-slate-600">Seguimiento comercial y operativo.</p>
+
+<div class="mt-6 grid gap-4 sm:grid-cols-3">
+  <div class="ui-card p-4"><div class="text-sm text-slate-500">Cotizaciones</div><div class="text-2xl font-bold">@cotizaciones.Count</div></div>
+  <div class="ui-card p-4"><div class="text-sm text-slate-500">Pendientes</div><div class="text-2xl font-bold">@cotizaciones.Count(c => c.Estado == EstadoCotizacion.Enviada || c.Estado == EstadoCotizacion.EnRevision)</div></div>
+  <div class="ui-card p-4"><div class="text-sm text-slate-500">Reservas</div><div class="text-2xl font-bold">@reservas.Count</div></div>
+</div>
+
+<div class="mt-8 ui-card p-4">
+  <h2 class="font-semibold">Cotizaciones recientes</h2>
+  <div class="mt-3 overflow-x-auto">
+    <table class="ui-table w-full text-sm"><thead class="bg-slate-50 text-left"><tr><th class="p-2">Número</th><th class="p-2">Solicitante</th><th class="p-2">Evento</th><th class="p-2">Estado</th></tr></thead><tbody>
+      @foreach (var c in cotizaciones.Take(8))
+      { <tr class="border-t"><td class="p-2">@c.Numero</td><td class="p-2">@((c.Cliente?.NombreRazonSocial) ?? c.SolicitanteNombre)</td><td class="p-2">@c.TipoEvento</td><td class="p-2">@c.Estado</td></tr> }
+    </tbody></table>
+  </div>
+</div>
+
+@code {
+  private List<Cotizacion> cotizaciones = new();
+  private List<Reserva> reservas = new();
+  protected override async Task OnInitializedAsync()
+  {
+    cotizaciones = await CotizacionService.ListarGestionAsync();
+    reservas = await ReservaService.ListarGestionAsync();
+  }
+}

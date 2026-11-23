@@ -1,0 +1,42 @@
+@page "/cliente/cotizaciones"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject CotizacionService CotizacionService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Mis cotizaciones</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Mis cotizaciones</h1>
+
+<div class="mt-4 overflow-x-auto ui-card">
+  <table class="ui-table w-full text-sm">
+    <thead class="bg-slate-50 text-left"><tr><th class="p-3">Número</th><th class="p-3">Tipo</th><th class="p-3">Salón</th><th class="p-3">Fecha tentativa</th><th class="p-3">Monto est.</th><th class="p-3">Estado</th></tr></thead>
+    <tbody>
+      @foreach (var c in items)
+      {
+        <tr class="border-t border-slate-100">
+          <td class="p-3 font-medium">@c.Numero</td>
+          <td class="p-3">@c.TipoEvento</td>
+          <td class="p-3">@c.Salon?.Nombre</td>
+          <td class="p-3">@c.FechaTentativaInicio?.ToString("g")</td>
+          <td class="p-3">$@c.MontoEstimado</td>
+          <td class="p-3"><span class="rounded bg-slate-100 px-2 py-1 text-xs">@c.Estado</span></td>
+        </tr>
+      }
+      @if (!items.Any()) { <tr><td class="p-4 text-slate-500" colspan="6">No tienes cotizaciones aún. <a href="/cotizar" class="ui-link">Solicitar una</a>.</td></tr> }
+    </tbody>
+  </table>
+</div>
+
+@code {
+  private List<Cotizacion> items = new();
+  protected override async Task OnInitializedAsync()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    var cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is not null) items = await CotizacionService.ListarPorClienteAsync(cliente.Id);
+  }
+}

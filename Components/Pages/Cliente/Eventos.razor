@@ -1,0 +1,48 @@
+@page "/cliente/eventos"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject EventoService EventoService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Mis eventos</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Mis eventos</h1>
+
+<div class="mt-4 grid gap-4">
+  @foreach (var e in items)
+  {
+    <article class="ui-card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div class="text-xs uppercase text-indigo-700">@e.Tipo @(!string.IsNullOrWhiteSpace(e.Subtipo)? $"· {e.Subtipo}" : "")</div>
+          <h2 class="text-lg font-semibold">@e.Titulo</h2>
+          <p class="text-sm text-slate-600">@e.FechaInicio:g - @e.FechaFin:g · Estado: @e.Estado</p>
+          @if(e.Reserva?.Salon is not null){<p class="text-sm text-slate-600">Salón: @e.Reserva.Salon.Nombre</p>}
+        </div>
+      </div>
+      @if (e.Cronograma.Any())
+      {
+        <div class="mt-3 border-t border-slate-100 pt-3">
+          <div class="text-sm font-semibold">Cronograma</div>
+          <ul class="mt-1 space-y-1 text-sm text-slate-700">
+            @foreach(var it in e.Cronograma.OrderBy(x=>x.Inicio)) { <li>@it.Inicio:t - @it.Fin:t · @it.Titulo</li> }
+          </ul>
+        </div>
+      }
+    </article>
+  }
+  @if (!items.Any()) { <div class="text-slate-500">No tienes eventos registrados.</div> }
+</div>
+
+@code {
+  private List<Evento> items = new();
+  protected override async Task OnInitializedAsync()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    var cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is not null) items = await EventoService.ListarPorClienteAsync(cliente.Id);
+  }
+}

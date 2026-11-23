@@ -1,0 +1,50 @@
+@page "/cliente/reservas"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject ReservaService ReservaService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Mis reservas</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Mis reservas</h1>
+
+<div class="mt-4 space-y-3">
+  @foreach (var r in items)
+  {
+    <div class="ui-card p-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div>
+        <div class="font-semibold">@r.Salon?.Nombre <span class="ml-2 rounded bg-slate-100 px-2 py-0.5 text-xs">@r.Estado</span></div>
+        <div class="text-sm text-slate-600">@r.Inicio:g — @r.Fin:g · Monto: $@r.Monto</div>
+        @if(r.Evento is not null){<div class="text-sm text-slate-600">Evento: @r.Evento.Titulo</div>}
+      </div>
+      @if (r.Estado == EstadoReserva.Solicitada || r.Estado == EstadoReserva.Confirmada)
+      {
+        <button class="ui-btn ui-btn-soft" @onclick="() => Cancelar(r.Id)">Cancelar</button>
+      }
+    </div>
+  }
+  @if (!items.Any()) { <div class="text-slate-500">No tienes reservas registradas.</div> }
+</div>
+
+@code {
+  private List<Reserva> items = new();
+  private Cliente? cliente;
+  protected override async Task OnInitializedAsync() => await Cargar();
+
+  private async Task Cargar()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is not null) items = await ReservaService.ListarPorClienteAsync(cliente.Id);
+  }
+
+  private async Task Cancelar(int id)
+  {
+    if (cliente is null) return;
+    await ReservaService.CancelarAsync(id, cliente.Id);
+    await Cargar();
+  }
+}

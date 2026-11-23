@@ -1,0 +1,25 @@
+@page "/cliente/facturas"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject EventoService EventoService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Mis facturas</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Mis facturas</h1>
+<div class="mt-4 overflow-x-auto ui-card"><table class="ui-table w-full text-sm"><thead class="bg-slate-50 text-left"><tr><th class="p-3">Número</th><th class="p-3">Evento</th><th class="p-3">Fecha</th><th class="p-3">Monto</th><th class="p-3">Estado</th></tr></thead><tbody>
+@foreach(var f in items){<tr class="border-t"><td class="p-3">@f.Numero</td><td class="p-3">@f.Evento?.Titulo</td><td class="p-3">@f.Fecha:d</td><td class="p-3">$@f.Monto</td><td class="p-3">@f.Estado</td></tr>}
+@if(!items.Any()){<tr><td class="p-4 text-slate-500" colspan="5">Sin facturas registradas.</td></tr>}
+</tbody></table></div>
+@code {
+  private List<Factura> items = new();
+  protected override async Task OnInitializedAsync()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    var cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is not null) items = await EventoService.FacturasPorClienteAsync(cliente.Id);
+  }
+}

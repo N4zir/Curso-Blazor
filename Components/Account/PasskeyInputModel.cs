@@ -1,4 +1,4 @@
-namespace sharpness_sharp.Components.Account;
+namespace CumbreSalonesCongresos.Components.Account;
 
 public class PasskeyInputModel
 {

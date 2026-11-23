@@ -1,0 +1,60 @@
+@page "/cliente/comentarios"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject EventoService EventoService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Comentarios</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Comentarios y valoraciones</h1>
+<div class="mt-4 grid gap-6 lg:grid-cols-3">
+  <section class="ui-card p-4 lg:col-span-2">
+    <h2 class="font-semibold">Mis comentarios</h2>
+    <ul class="mt-3 space-y-3">
+      @foreach (var c in items)
+      { <li class="border-b border-slate-100 pb-2"><div class="font-medium">@c.Evento?.Titulo · @c.Calificacion/5</div><p class="text-sm text-slate-700">@c.Texto</p></li> }
+      @if(!items.Any()){<li class="text-slate-500">Sin comentarios.</li>}
+    </ul>
+  </section>
+  <section class="ui-card p-4">
+    <h2 class="font-semibold">Nuevo comentario</h2>
+    @if (eventos.Any())
+    {
+      <EditForm Model="form" OnValidSubmit="Enviar" FormName="comment-form" class="mt-3 space-y-3">
+        <div class="ui-field"><label class="ui-label">Evento</label><InputSelect class="ui-input" @bind-Value="form.EventoId">@foreach(var e in eventos){<option value="@e.Id">@e.Titulo</option>}</InputSelect></div>
+        <div class="ui-field"><label class="ui-label">Calificación (1-5)</label><InputNumber class="ui-input" @bind-Value="form.Calificacion" /></div>
+        <div class="ui-field"><label class="ui-label">Comentario</label><InputTextArea class="ui-input" rows="3" @bind-Value="form.Texto" /></div>
+        <button class="ui-btn ui-btn-primary" type="submit">Enviar</button>
+      </EditForm>
+    } else { <p class="mt-2 text-sm text-slate-500">Disponible cuando tengas eventos.</p> }
+  </section>
+</div>
+@code {
+  private List<ComentarioEvento> items = new();
+  private List<Evento> eventos = new();
+  private Cliente? cliente;
+  [SupplyParameterFromForm] private CForm form { get; set; } = new() { Calificacion = 5 };
+
+  protected override async Task OnInitializedAsync() => await Cargar();
+  private async Task Cargar()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is null) return;
+    items = await EventoService.ComentariosPorClienteAsync(cliente.Id);
+    eventos = await EventoService.ListarPorClienteAsync(cliente.Id);
+    if (form.EventoId == 0 && eventos.Any()) form.EventoId = eventos.First().Id;
+  }
+  private async Task Enviar()
+  {
+    if (cliente is null || form.EventoId == 0 || string.IsNullOrWhiteSpace(form.Texto)) return;
+    var cal = Math.Clamp(form.Calificacion, 1, 5);
+    await EventoService.AgregarComentarioAsync(new ComentarioEvento { EventoId = form.EventoId, ClienteId = cliente.Id, Calificacion = cal, Texto = form.Texto });
+    form = new CForm { Calificacion = 5, EventoId = eventos.FirstOrDefault()?.Id ?? 0 };
+    await Cargar();
+  }
+  private class CForm { public int EventoId { get; set; } public int Calificacion { get; set; } public string? Texto { get; set; } }
+}

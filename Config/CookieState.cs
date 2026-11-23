@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace sharpness_sharp.Config
+namespace CumbreSalonesCongresos.Config
 {
     public class CookieState(IConfiguration configuration)
     {
@@ -15,7 +15,7 @@ namespace sharpness_sharp.Config
 
         public void Cargar(Dictionary<string, string>? cookies)
         {
-            var destino = SharpnessHttpClient.BaseUri(configuration);
+            var destino = CumbreHttpClient.BaseUri(configuration);
             if (cookies is null || destino is null) return;
 
             foreach (var (nombre, valor) in cookies)

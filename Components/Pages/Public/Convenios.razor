@@ -1,0 +1,32 @@
+@page "/convenios"
+@inject MarketingService MarketingService
+
+<PageTitle>Convenios | Cumbre Salones y Congresos</PageTitle>
+<h1 class="text-3xl font-bold">Convenios y beneficios</h1>
+<p class="mt-3 max-w-3xl text-slate-700">Programas para empresas, universidades, cámaras empresariales e instituciones gubernamentales con tarifas preferenciales y beneficios exclusivos.</p>
+
+<div class="mt-6 grid gap-4 md:grid-cols-2">
+  <div class="ui-card p-5"><h3 class="font-semibold">Beneficios</h3><ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700"><li>Descuentos por contratación anual</li><li>Paquetes para graduaciones y congresos internacionales</li><li>Tarifas preferenciales para instituciones educativas</li><li>Beneficios para cámaras empresariales y aliados</li></ul></div>
+  <div class="ui-card p-5"><h3 class="font-semibold">Alianzas estratégicas</h3><p class="mt-2 text-sm text-slate-700">Diseñamos convenios a medida según volumen, tipo de evento y necesidades operativas. Contáctanos para una propuesta.</p><a href="/contacto" class="ui-btn ui-btn-primary mt-4">Solicitar alianza</a></div>
+</div>
+
+@if (convenios.Any())
+{
+  <h2 class="mt-10 text-xl font-semibold">Convenios activos</h2>
+  <div class="mt-4 grid gap-4 md:grid-cols-3">
+    @foreach (var c in convenios)
+    {
+      <div class="ui-card p-4">
+        <div class="text-xs font-semibold uppercase text-indigo-700">@c.Tipo</div>
+        <div class="mt-1 font-semibold">@c.Nombre</div>
+        <p class="mt-1 text-sm text-slate-600">@c.Beneficios</p>
+        <div class="mt-2 text-sm font-medium text-emerald-700">Hasta @c.PorcentajeDescuento% de beneficio</div>
+      </div>
+    }
+  </div>
+}
+
+@code {
+  private List<EntidadConvenio> convenios = new();
+  protected override async Task OnInitializedAsync() => convenios = await MarketingService.ConveniosAsync();
+}

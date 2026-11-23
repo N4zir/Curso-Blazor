@@ -1,0 +1,146 @@
+@page "/cotizar"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Identity
+@inject SalonService SalonService
+@inject CotizacionService CotizacionService
+@inject ClienteService ClienteService
+@inject AuthenticationStateProvider AuthState
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Solicitar cotización | Cumbre Salones y Congresos</PageTitle>
+<h1 class="text-3xl font-bold">Solicitar cotización</h1>
+<p class="mt-2 text-slate-700">Completa el formulario y nuestro equipo comercial preparará una propuesta.</p>
+
+@if (ok)
+{
+  <div class="ui-alert ui-alert-ok mt-6">
+    Solicitud registrada correctamente. <strong>Número: @numero</strong>. Estado: Enviada.
+    <div class="mt-2"><a href="/cliente/cotizaciones" class="ui-link">Ver mis cotizaciones (si tienes cuenta)</a></div>
+  </div>
+}
+else
+{
+  @if (!string.IsNullOrWhiteSpace(error)) { <div class="ui-alert ui-alert-error mt-4">@error</div> }
+  <EditForm Model="form" OnValidSubmit="Enviar" FormName="cotizar-form" class="mt-6 grid gap-6 lg:grid-cols-3">
+    <DataAnnotationsValidator />
+    <div class="space-y-4 ui-card p-6 lg:col-span-2">
+      <h2 class="font-semibold">Datos del solicitante</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="ui-field"><label class="ui-label">Nombre / Razón social</label><InputText class="ui-input" @bind-Value="form.Nombre" /></div>
+        <div class="ui-field"><label class="ui-label">Entidad / Organización</label><InputText class="ui-input" @bind-Value="form.Entidad" /></div>
+        <div class="ui-field"><label class="ui-label">Email</label><InputText class="ui-input" @bind-Value="form.Email" /></div>
+        <div class="ui-field"><label class="ui-label">Teléfono</label><InputText class="ui-input" @bind-Value="form.Telefono" /></div>
+      </div>
+      <h2 class="pt-2 font-semibold">Detalle del evento</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="ui-field"><label class="ui-label">Tipo de evento</label>
+          <InputSelect class="ui-input" @bind-Value="form.TipoEvento">@foreach(var t in Enum.GetValues<TipoEvento>()){<option value="@t">@t</option>}</InputSelect>
+        </div>
+        <div class="ui-field"><label class="ui-label">Salón preferido</label>
+          <InputSelect class="ui-input" @bind-Value="form.SalonId"><option value="">-- Seleccionar --</option>@foreach(var s in salones){<option value="@s.Id">@s.Nombre (@s.Capacidad pax)</option>}</InputSelect>
+        </div>
+        <div class="ui-field"><label class="ui-label">Inicio (fecha y hora)</label><InputDate Type="InputDateType.DateTimeLocal" class="ui-input" @bind-Value="form.Inicio" /></div>
+        <div class="ui-field"><label class="ui-label">Fin (fecha y hora)</label><InputDate Type="InputDateType.DateTimeLocal" class="ui-input" @bind-Value="form.Fin" /></div>
+        <div class="ui-field"><label class="ui-label">Cantidad de asistentes</label><InputNumber class="ui-input" @bind-Value="form.CantidadPersonas" /></div>
+      </div>
+      <div class="ui-field"><label class="ui-label">Servicios solicitados (catering, producción, streaming, etc.)</label><InputTextArea class="ui-input" rows="3" @bind-Value="form.Servicios" /></div>
+      <div class="ui-field"><label class="ui-label">Observaciones</label><InputTextArea class="ui-input" rows="3" @bind-Value="form.Observaciones" /></div>
+      <button class="ui-btn ui-btn-primary" type="submit">Enviar solicitud</button>
+    </div>
+    <aside class="space-y-4">
+      <div class="ui-card p-4"><h3 class="font-semibold">¿Necesitas ayuda?</h3><p class="mt-2 text-sm text-slate-600">Nuestro equipo puede asesorarte en la selección de salón, montaje y servicios complementarios.</p></div>
+      @if (salonSeleccionado is not null)
+      {
+        <div class="ui-card p-4">
+          <div class="font-semibold">@salonSeleccionado.Nombre</div>
+          <p class="mt-1 text-sm text-slate-600">Tipo: @salonSeleccionado.Tipo · Capacidad: @salonSeleccionado.Capacidad</p>
+          <p class="text-sm text-slate-600">Tarifa base: $@salonSeleccionado.TarifaBase</p>
+        </div>
+      }
+    </aside>
+  </EditForm>
+}
+
+@code {
+  [SupplyParameterFromQuery] public int? salonId { get; set; }
+  private List<Salon> salones = new();
+  private bool ok; private string? numero; private string? error;
+  [SupplyParameterFromForm] private CotizarForm form { get; set; } = new();
+
+  private Salon? salonSeleccionado => salones.FirstOrDefault(s => s.Id.ToString() == form.SalonId);
+
+  protected override async Task OnInitializedAsync()
+  {
+    salones = await SalonService.ListarAsync();
+    if (salonId.HasValue) form.SalonId = salonId.Value.ToString();
+
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var user = state.User;
+    if (user.Identity?.IsAuthenticated == true)
+    {
+      form.Email ??= user.FindFirst(ClaimTypes.Email)?.Value ?? user.Identity?.Name;
+      form.Nombre ??= user.Identity?.Name;
+    }
+  }
+
+  private async Task Enviar()
+  {
+    error = null;
+    if (string.IsNullOrWhiteSpace(form.Nombre) || string.IsNullOrWhiteSpace(form.Email)) { error = "Nombre y email son obligatorios."; return; }
+    if (form.Inicio.HasValue && form.Fin.HasValue && form.Fin <= form.Inicio) { error = "La fecha de fin debe ser posterior al inicio."; return; }
+
+    int? clienteId = null;
+    var state = await AuthState.GetAuthenticationStateAsync();
+    if (state.User.Identity?.IsAuthenticated == true)
+    {
+      var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+      if (uid is not null)
+      {
+        var cliente = await ClienteService.GetByUserIdAsync(uid);
+        if (cliente is null)
+        {
+          var appUser = await UserManager.FindByIdAsync(uid);
+          if (appUser is not null)
+          {
+            cliente = await ClienteService.EnsureClienteAsync(appUser, form.Nombre, form.Email);
+          }
+        }
+        clienteId = cliente?.Id;
+      }
+    }
+
+    var c = new Cotizacion
+    {
+      ClienteId = clienteId,
+      SolicitanteNombre = form.Nombre,
+      SolicitanteEmail = form.Email,
+      SolicitanteTelefono = form.Telefono,
+      Entidad = form.Entidad,
+      SalonId = int.TryParse(form.SalonId, out var sid) ? sid : null,
+      TipoEvento = form.TipoEvento,
+      FechaTentativaInicio = form.Inicio,
+      FechaTentativaFin = form.Fin,
+      CantidadPersonas = form.CantidadPersonas,
+      ServiciosSolicitados = form.Servicios,
+      Observaciones = form.Observaciones
+    };
+    var res = await CotizacionService.CrearSolicitudAsync(c);
+    if (res.Ok) { ok = true; numero = res.Value!.Numero; } else error = res.Error;
+  }
+
+  private class CotizarForm
+  {
+    public string? Nombre { get; set; }
+    public string? Entidad { get; set; }
+    public string? Email { get; set; }
+    public string? Telefono { get; set; }
+    public TipoEvento TipoEvento { get; set; } = TipoEvento.Empresarial;
+    public string? SalonId { get; set; }
+    public DateTime? Inicio { get; set; }
+    public DateTime? Fin { get; set; }
+    public int CantidadPersonas { get; set; }
+    public string? Servicios { get; set; }
+    public string? Observaciones { get; set; }
+  }
+}

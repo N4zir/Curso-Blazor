@@ -1,7 +1,94 @@
-﻿@page "/"
+@page "/"
+@inject SalonService SalonService
+@inject MarketingService MarketingService
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Cumbre Salones y Congresos | Experiencias y convenciones</PageTitle>
 
-<h1>Hello, world!</h1>
+<section class="rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-900 px-8 py-14 text-white">
+    <div class="max-w-3xl">
+        <p class="mb-2 text-sm uppercase tracking-widest text-indigo-200">Eventos corporativos, sociales y académicos</p>
+        <h1 class="text-4xl font-bold leading-tight">Creamos experiencias memorables con producción integral</h1>
+        <p class="mt-4 text-lg text-indigo-100">Salones, auditorios y centros de convenciones con tecnología, catering y coordinación experta para empresas, universidades e instituciones.</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+            <a href="/cotizar" class="ui-btn ui-btn-primary">Solicitar cotización</a>
+            <a href="/salones" class="ui-btn ui-btn-soft bg-white/10 text-white hover:bg-white/20">Ver salones</a>
+        </div>
+    </div>
+</section>
 
-Welcome to your new app.
+<section class="mt-10 grid gap-4 md:grid-cols-3">
+    <div class="ui-card p-5"><h3 class="font-semibold">Eventos empresariales</h3><p class="mt-2 text-sm text-slate-600">Lanzamientos, convenciones, cumbres y foros con soporte técnico completo.</p></div>
+    <div class="ui-card p-5"><h3 class="font-semibold">Producción integral</h3><p class="mt-2 text-sm text-slate-600">Escenarios, sonido, iluminación inteligente, pantallas LED y streaming.</p></div>
+    <div class="ui-card p-5"><h3 class="font-semibold">Experiencias premium</h3><p class="mt-2 text-sm text-slate-600">Atención personalizada, protocolos especiales y coordinación VIP.</p></div>
+</section>
+
+<section class="mt-12">
+    <div class="mb-4 flex items-end justify-between">
+        <div><h2 class="text-2xl font-bold">Salones destacados</h2><p class="text-sm text-slate-600">Espacios versátiles con disponibilidad y tarifas competitivas.</p></div>
+        <a href="/salones" class="ui-link">Ver catálogo</a>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @foreach (var s in salones.Take(3))
+        {
+            <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                @if (!string.IsNullOrWhiteSpace(s.ImagenUrl)) { <img src="@s.ImagenUrl" alt="@s.Nombre" class="h-40 w-full object-cover" /> }
+                <div class="p-4">
+                    <div class="text-xs font-semibold uppercase text-indigo-700">@s.Tipo</div>
+                    <h3 class="mt-1 font-semibold">@s.Nombre</h3>
+                    <p class="mt-1 text-sm text-slate-600">Capacidad: @s.Capacidad personas · Tarifa base: $@s.TarifaBase</p>
+                    <a href="/cotizar?salonId=@s.Id" class="ui-btn ui-btn-soft mt-3">Cotizar este salón</a>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@if (promos.Any())
+{
+<section class="mt-12">
+    <h2 class="text-2xl font-bold">Promociones vigentes</h2>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+        @foreach (var p in promos)
+        {
+            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <div class="font-semibold text-amber-900">@p.Titulo</div>
+                <p class="mt-1 text-sm text-amber-900/80">@p.Descripcion</p>
+                <div class="mt-2 text-sm font-medium text-amber-900">Descuento: @p.DescuentoPorcentaje%</div>
+            </div>
+        }
+    </div>
+</section>
+}
+
+@if (casos.Any())
+{
+<section class="mt-12 mb-6">
+    <h2 class="text-2xl font-bold">Casos de éxito</h2>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+        @foreach (var c in casos.Take(2))
+        {
+            <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                @if (!string.IsNullOrWhiteSpace(c.ImagenUrl)) { <img src="@c.ImagenUrl" alt="@c.Titulo" class="h-44 w-full object-cover" /> }
+                <div class="p-4">
+                    <h3 class="font-semibold">@c.Titulo</h3>
+                    <p class="mt-1 text-sm text-slate-600">@c.Descripcion</p>
+                    @if(!string.IsNullOrWhiteSpace(c.Cliente)){<p class="mt-2 text-xs text-slate-500">Cliente: @c.Cliente</p>}
+                </div>
+            </article>
+        }
+    </div>
+</section>
+}
+
+@code {
+    private List<Salon> salones = new();
+    private List<Promocion> promos = new();
+    private List<CasoExito> casos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        salones = await SalonService.ListarAsync();
+        promos = await MarketingService.PromocionesActivasAsync();
+        casos = await MarketingService.CasosAsync();
+    }
+}

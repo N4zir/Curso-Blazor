@@ -1,280 +1,111 @@
-# Sharpness Sharp
+# Cumbre Salones y Congresos
 
-Plantilla de **Blazor Web App sobre .NET 10** para el curso de desarrollo fullstack con C#.
+Plataforma web para gestión integral de eventos, salones y congresos, construida sobre **Blazor Web App (.NET 10)**, **Tailwind CSS**, **EF Core** y **ASP.NET Core Identity**. Parte de una plantilla base con arranque encapsulado en `Config/` y la extiende con dominio, portales y APIs para operación comercial y de eventos.
 
-La idea es sacar del medio el cableado repetitivo — base de datos, login, cliente HTTP,
-endpoints — para que cada clase empiece escribiendo la funcionalidad y no `Program.cs`.
-Todo el arranque queda en cuatro extensiones dentro de `Config/`.
+## Stack
 
-```csharp
-// Program.cs
-builder.Services.UseHttpClient(builder.Configuration);
-builder.Services.UseAuth(builder.Configuration);   // configura la base por dentro
-...
-app.UseAPIEndpoints();
-```
-
----
+| Capa | Tecnología |
+|---|---|
+| Frontend | Blazor Web App (.NET 10), render interactivo servidor, Tailwind CSS |
+| Backend | ASP.NET Core 10, Minimal APIs por contrato `IEndpoints` |
+| Datos | EF Core 10 + `ApplicationAuthDbContext` (Identity + dominio) |
+| Auth | ASP.NET Core Identity, cookies HttpOnly, roles/políticas |
+| DB | SQLite (dev por defecto), PostgreSQL, SQL Server |
 
 ## Requisitos
 
 | | |
 |---|---|
 | .NET SDK | 10.0 |
-| Node + pnpm | sólo para Tailwind (el build lo invoca solo) |
-| `dotnet-ef` | ya está en `dotnet-tools.json` → `dotnet tool restore` |
+| Node + pnpm | para Tailwind (el build lo invoca) |
+| `dotnet-ef` | en `dotnet-tools.json` → `dotnet tool restore` |
 
 ```bash
 dotnet tool restore
+dotnet build
+dotnet tool run dotnet-ef database update --context ApplicationAuthDbContext
 dotnet run
 ```
 
-La primera compilación corre `pnpm install` y genera `wwwroot/app.css` con Tailwind.
-En Linux y macOS además deja un watcher de CSS andando.
-
----
+La primera compilación ejecuta `pnpm install` y genera `wwwroot/app.css`. En dev, `SeedAuth()` aplica migraciones/roles/admin y `SeedDataService` carga datos de referencia (salones, convenios, promociones, galería).
 
 ## Configuración
 
-Todo vive en `appsettings.json`. **Cualquier clave se puede pisar con variables de
-entorno** usando `__` como separador — que es como se configura en Docker y en el
-servidor, sin tocar el JSON ni recompilar.
+Configuración en `appsettings.json`, sobreescribible por variables de entorno con `__`:
 
 ```bash
 Database__Engine=POSTGRESQL
-Database__Password=loquesea
+Database__Password=...
+Auth__AdminPassword=...
 Api__BaseUrl=https://mi-dominio.com/
 ```
 
-> Las contraseñas **no van al repositorio**. Usá variables de entorno o
-> `dotnet user-secrets set "Database:Password" "..."`.
+> No subas contraseñas al repo. Usa variables de entorno o `dotnet user-secrets`.
 
----
-
-## `UseDB()` — base de datos
-
-Registra el `DbContext` resolviendo el motor en tiempo de arranque.
+### Base de datos (`UseDB`)
 
 ```json
-"Database": {
-  "Engine": "SQLITE",
-  "Source": "Data/app.db"
-}
+"Database": { "Engine": "SQLITE", "Source": "Data/app.db" }
 ```
 
-Motores soportados y qué campos pide cada uno:
+| `Engine` | Campos |
+|---|---|
+| `SQLITE` | `Source` |
+| `POSTGRESQL` | `Host`, `Port`, `Name`, `User`, `Password` |
+| `SQLSERVER` | ídem + `TrustServerCertificate` |
 
-| `Engine` | Paquete | Campos |
-|---|---|---|
-| `SQLITE` | `Microsoft.EntityFrameworkCore.Sqlite` | `Source` |
-| `POSTGRESQL` | `Npgsql.EntityFrameworkCore.PostgreSQL` | `Host`, `Port`, `Name`, `User`, `Password` |
-| `SQLSERVER` | `Microsoft.EntityFrameworkCore.SqlServer` | ídem + `TrustServerCertificate` |
+### Auth y roles (`UseAuth`)
 
-Pasar de SQLite a Supabase no toca una línea de C#:
+`UseAuth` configura Identity y llama a `UseDB` internamente (no llamar ambos). Registra `ApplicationAuthDbContext` como contexto único de Identity + dominio.
 
-```json
-"Database": {
-  "Engine": "POSTGRESQL",
-  "Host": "db.xxxx.supabase.co",
-  "Port": 5432,
-  "Name": "postgres",
-  "User": "postgres"
-}
-```
+Roles sembrados por configuración (`Auth:Roles`): `Admin, Empleado, Marketing, Cocina, Cliente, ClienteVIP`. El admin dev se configura en `appsettings.Development.json` (no usar esa contraseña en producción).
 
-Detalles que importan:
+Políticas registradas en `Program.cs`: `PortalCliente`, `PortalEmpleado`, `PortalCocina`, `PortalAdmin`.
 
-- La cadena se arma con el `ConnectionStringBuilder` de cada driver, no concatenando
-  texto, así una contraseña con `;` o `=` no rompe nada.
-- Si falta un dato, la app **no arranca** y dice exactamente cuál y dónde ponerlo:
-  `UseDB: falta 'Password' para POSTGRESQL. Definilo en appsettings.json como
-  "Database:Password" o con la variable de entorno Database__Password.`
-- También existe la versión explícita, para mostrar en clase qué está pasando:
-  `services.UseDB(new DatabaseParams(DBEngine.POSTGRESQL, host, port, name, user, password))`.
+## Módulos implementados (Fases 0–3)
 
----
+### Fase 0 — Base
+- Limpieza del dominio de ejemplo y estructura por capas: `Domain/`, `Application/`, `Infrastructure/Persistence/`, `Services/`, `API/`, `Components/`.
+- DI de servicios, políticas de autorización, seed de dominio.
 
-## `UseAuth()` — login, registro y roles
+### Fase 1 — Dominio y datos
+- Entidades núcleo: `Cliente`, `EntidadConvenio`, `Salon`, `Cotizacion`, `Reserva`, `Evento`, `CronogramaItem`, `Contrato`, `Empleado`, `ComentarioEvento`, `Promocion`, `CasoExito`, `GaleriaItem`, `Participante`, `Factura`, `Pago`.
+- `ApplicationAuthDbContext` con precisión decimal, índices y relaciones.
+- Servicios: `ClienteService`, `SalonService` (disponibilidad), `CotizacionService`, `ReservaService` (validación de solapamiento + conversión transaccional cotización→reserva+evento+contrato), `EventoService`, `MarketingService`, `SeedDataService`.
 
-Embebe todo el bloque de ASP.NET Core Identity que el template `-au Individual` deja
-suelto en `Program.cs`: el `DbContext`, el esquema de cookies, el
-`AuthenticationStateProvider`, los scoped del área de Account, el `UserManager` /
-`SignInManager` y el emisor de mails.
+### Fase 2 — Sitio público y captación
+- Rutas públicas: `/`, `/nosotros`, `/eventos`, `/congresos`, `/servicios`, `/catering`, `/galeria`, `/convenios`, `/contacto`, `/salones`, `/cotizar`.
+- Catálogo de salones con filtros y CTA a cotización.
+- Solicitud de cotización persistida; vincula cliente autenticado cuando aplica.
 
-```csharp
-builder.Services.UseAuth(builder.Configuration);
-```
-
-**`UseAuth` llama a `UseDB` por dentro** — no hay que llamar a las dos. Lo único que le
-pasa es un flag que decide qué contexto se registra:
-
-| | Contexto registrado | Para qué |
-|---|---|---|
-| `UseAuth(config)` | `ApplicationAuthDbContext` | la app con login |
-| `UseDB(config)` | `ApplicationDbContext` | la app sin login |
-
-Son **dos clases pero un solo contexto vivo**: el flag elige cuál. Con login, el contexto
-es un `IdentityDbContext`, así que las tablas de la aplicación conviven con las de Identity
-en el mismo modelo — y por lo tanto una `Venta` puede tener una navigation property real
-hacia `ApplicationUser`, con su clave foránea y su `Include`.
-
-Las tablas propias se declaran ahí:
-
-```csharp
-// Data/ApplicationDbContext.cs
-public class ApplicationAuthDbContext(DbContextOptions<ApplicationAuthDbContext> options)
-    : IdentityDbContext<ApplicationUser>(options)
-{
-    public DbSet<Producto> Productos => Set<Producto>();
-    public DbSet<Venta> Ventas => Set<Venta>();
-}
-```
-
-Lo que ya viene andando, sin escribir una línea: registro, confirmación de cuenta, login,
-2FA, passkeys, recuperación de contraseña y exportación de datos personales — las páginas
-están en `Components/Account/`.
-
-- La cookie de sesión es **HttpOnly**: el JavaScript del navegador no puede leerla.
-- Bajo `/api` un pedido sin sesión responde **401** y uno sin el rol necesario **403**, en vez de
-  redirigir a la página de login (que sólo tiene sentido para páginas).
-- `AddAuthorization`, `UseAuthentication` y `UseAuthorization` ya están en `Program.cs`, así que
-  `.RequireAuthorization()` y `[Authorize(Roles = "...")]` funcionan en endpoints y páginas.
-
-### Seed inicial
-
-```csharp
-// Program.cs, despues de builder.Build()
-await app.SeedAuth();
-```
-
-En cada arranque, y de forma idempotente:
-
-1. aplica las migraciones pendientes;
-2. crea los roles de `Auth:Roles` que falten — `AdminRole` siempre entra;
-3. siembra el usuario administrador y lo agrega a su rol.
-
-```json
-"Auth": {
-  "AdminRole": "Admin",
-  "Roles": [ "Admin" ],
-  "AdminEmail": "",
-  "AdminPassword": ""
-}
-```
-
-En desarrollo, `appsettings.Development.json` ya trae `admin@sharpness.local` /
-`Admin123!`, así que un clon limpio se corre y se entra sin configurar nada.
-
-> **La contraseña de produccion no va al repositorio.** Se pasa por `Auth__AdminPassword`
-> o `dotnet user-secrets set "Auth:AdminPassword" "..."`. Si `AdminEmail` o `AdminPassword`
-> quedan vacios, los roles se crean igual y el usuario se saltea con un warning en el log.
-
-Para las Clases 4 y 5, los roles nuevos se agregan **sin tocar C#**:
-
-```json
-"Roles": [ "Admin", "Cliente", "ClienteVIP" ]
-```
-
-El admin sembrado queda con `EmailConfirmed = true` a proposito: `UseAuth` deja
-`RequireConfirmedAccount` en `true`, y no hay mail que confirmar.
-
-### Migraciones
-
-El contexto de Identity es el dueño de las migraciones, así que **hay que nombrarlo**:
-
-```bash
-dotnet ef migrations add AgregarProductos --context ApplicationAuthDbContext
-dotnet ef database update --context ApplicationAuthDbContext
-```
-
-La migración inicial `CreateIdentitySchema` ya crea las tablas `AspNet*`. No hace falta
-aplicarlas a mano antes del primer arranque: `SeedAuth()` lo hace solo.
-
----
-
-## `UseHttpClient()` — cliente HTTP
-
-```json
-"Api": { "BaseUrl": "https://localhost:7249/" }
-```
-
-Registra un `HttpClient` **scoped** (uno por circuito de Blazor), para inyectarlo directo en
-servicios y componentes.
-
-- Cada cliente tiene su propio `SocketsHttpHandler` con un `CookieContainer`, cargado con la
-  cookie de sesión de Identity (HttpOnly) del usuario. Así las llamadas a la propia API van
-  autenticadas sin armar el header `Cookie` a mano. El contenedor NO se comparte entre usuarios:
-  por eso no se usa `IHttpClientFactory`, cuyos handlers se reutilizan entre peticiones.
-
-- Si `Api:BaseUrl` está vacío el cliente igual sirve: sólo hay que usar URLs absolutas,
-  que es lo que se hace al consumir una API ajena.
-- La barra final se normaliza sola. Sin ella, .NET reemplaza el último segmento:
-  con base `https://host/api` pedir `"productos"` termina pegándole a `https://host/productos`.
-  Por el mismo motivo, **las rutas relativas no empiezan con `/`**.
-- `BaseUrl` tiene que coincidir con el `applicationUrl` de `Properties/launchSettings.json`.
-  En Docker va a ser otra, por eso es configuración y no una constante.
-
----
-
-## `UseAPIEndpoints()` — endpoints automáticos
-
-Descubre por reflexión todas las clases que implementan `IEndpoints` y las mapea. No hay
-que tocar `Program.cs` para agregar una API nueva: alcanza con crear la clase.
-
-```csharp
-// API/CafesEndpoints.cs
-public class CafesEndpoints : IEndpoints
-{
-    public void MapEndpoints(IEndpointRouteBuilder app)
-    {
-        app.MapGet("/api/cafes", async (ICafeRepository repo) => await repo.ObtenerAsync());
-        app.MapPost("/api/cafes", async (CafeDto dto, ICafeRepository repo) => ...);
-    }
-}
-```
-
-Se descubre por **contrato**, no por nombre: si la clase no implementa `IEndpoints` el
-compilador avisa, mientras que un filtro por `"...Endpoints"` fallaría en silencio ante
-un typo. Nada se mapea si no se llama a `app.UseAPIEndpoints()`.
-
-Los servicios se inyectan **en el handler**, no en el constructor de la clase: Minimal API
-los resuelve por request, y así cada endpoint declara exactamente lo que necesita.
-
----
+### Fase 3 — Portal cliente y flujo comercial mínimo
+- Portal cliente `/cliente/*` (policy `PortalCliente`): dashboard, cotizaciones, reservas, eventos, cronogramas, contratos, facturas, pagos, participantes, historial, comentarios, perfil.
+- Alta/vinculación de `Cliente` al registrar o primer acceso.
+- Portal empleado mínimo `/empleado/*` (policy `PortalEmpleado`): dashboard, bandeja de cotizaciones, cambio de estado, monto estimado, conversión a reserva+evento+contrato, listado de reservas.
+- APIs `IEndpoints`: `SalonesEndpoints`, `CotizacionesEndpoints`, `EventosEndpoints`, `ReservasEndpoints`.
 
 ## Estructura
 
-```
-Config/            las cuatro extensiones de arranque
-  SharpnessDB.cs            UseDB + DatabaseParams + DBEngine
-  SharpnessAuth.cs          UseAuth
-  SharpnessHttpClient.cs    UseHttpClient
-  SharpnessAPIEndpoints.cs  UseAPIEndpoints + IEndpoints
-API/               las clases IEndpoints de la aplicación
-Data/              DbContexts, ApplicationUser y migraciones
-Components/        Razor: Layout, Pages y el área Account de Identity
-Styles/            entrada de Tailwind (tailwind.css) y el watcher
-wwwroot/           app.css generado — no se edita a mano
+```text
+Config/            CumbreDB, CumbreAuth, CumbreHttpClient, CumbreAPIEndpoints
+API/               Endpoints por módulo (IEndpoints)
+Domain/            Entidades y enums
+Application/       Servicios de aplicación y resultados
+Data/              ApplicationAuthDbContext, ApplicationUser, seed/migraciones
+Components/        Layouts, páginas públicas, cliente, empleado, Account
+Styles/            Tailwind input
+wwwroot/           app.css generado
 ```
 
----
+## Migraciones
 
-## Temario del curso
-
-| Clase | Tema | Qué se usa de la plantilla |
-|---|---|---|
-| 1 | Frontend: componentes, cards, búsqueda, filtros | Razor + Tailwind |
-| 2 | Backend: servicios, DI, HttpClient, API, CRUD | `UseHttpClient`, `UseAPIEndpoints` |
-| 3 | Datos: PostgreSQL, EF Core, modelos, relaciones, DTOs | `UseDB`, migraciones |
-| 4 | Auth: Identity, autorización, roles, API protegida | `UseAuth` |
-| 5 | A producción: Docker y feature VIP de punta a punta | todo junto |
-
----
+```bash
+dotnet tool run dotnet-ef migrations add <Nombre> --context ApplicationAuthDbContext
+dotnet tool run dotnet-ef database update --context ApplicationAuthDbContext
+```
 
 ## Notas
 
-- Tailwind corre desde el `.csproj` (target `TailwindCss`), antes de `AssignTargetPaths`,
-  para que `wwwroot/app.css` exista cuando se arma la lista de static assets.
-- `*.db` está en `.gitignore`: la base local no se versiona.
-- `RequireConfirmedAccount` está en `true`. El template no manda mails de verdad
-  (`IdentityNoOpEmailSender`): muestra el link de confirmación en pantalla.
+- `*.db` se ignora en git; la DB local se genera por migración/seed.
+- `RequireConfirmedAccount` está activo; el emisor de correo por defecto es no-op en dev.
+- Para producción: configurar secretos por entorno, correo real, storage, pasarela de pagos y endurecer auditoría/concurrencia según despliegue.

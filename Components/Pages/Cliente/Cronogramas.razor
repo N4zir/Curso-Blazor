@@ -1,0 +1,37 @@
+@page "/cliente/cronogramas"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject EventoService EventoService
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Cronogramas</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Cronogramas</h1>
+@foreach (var e in eventos)
+{
+  <section class="mt-4 ui-card p-4">
+    <h2 class="font-semibold">@e.Titulo <span class="text-sm font-normal text-slate-500">(@e.FechaInicio:d)</span></h2>
+    @if (e.Cronograma.Any())
+    {
+      <ul class="mt-2 space-y-1 text-sm">
+        @foreach (var it in e.Cronograma.OrderBy(x=>x.Inicio))
+        { <li class="flex gap-3 border-b border-slate-100 py-1"><span class="w-40 text-slate-500">@it.Inicio:g - @it.Fin:t</span><span>@it.Titulo</span></li> }
+      </ul>
+    }
+    else { <p class="mt-2 text-sm text-slate-500">Sin actividades registradas aún.</p> }
+  </section>
+}
+@if (!eventos.Any()) { <p class="mt-4 text-slate-500">No hay eventos.</p> }
+
+@code {
+  private List<Evento> eventos = new();
+  protected override async Task OnInitializedAsync()
+  {
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    var cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+    if (cliente is not null) eventos = await EventoService.ListarPorClienteAsync(cliente.Id);
+  }
+}

@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
-using sharpness_sharp.Data;
+using CumbreSalonesCongresos.Data;
 
-namespace sharpness_sharp.Components.Account;
+namespace CumbreSalonesCongresos.Components.Account;
 
 internal sealed class IdentityRedirectManager(NavigationManager navigationManager)
 {

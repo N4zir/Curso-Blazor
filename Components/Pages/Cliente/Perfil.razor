@@ -1,0 +1,49 @@
+@page "/cliente/perfil"
+@attribute [Authorize(Policy = "PortalCliente")]
+@using System.Security.Claims
+@inject ClienteService ClienteService
+@inject ApplicationAuthDbContext Db
+@inject AuthenticationStateProvider AuthState
+
+<PageTitle>Mi perfil</PageTitle>
+<PortalClienteNav />
+<h1 class="text-2xl font-bold">Perfil</h1>
+@if (cliente is null) { <p class="mt-4">Cargando...</p> }
+else
+{
+  @if(saved){<div class="ui-alert ui-alert-ok mt-4">Perfil actualizado.</div>}
+  <EditForm Model="cliente" OnValidSubmit="Guardar" FormName="perfil-form" class="mt-4 max-w-2xl ui-card p-6 space-y-4">
+    <div class="ui-field"><label class="ui-label">Nombre / Razón social</label><InputText class="ui-input" @bind-Value="cliente.NombreRazonSocial" /></div>
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="ui-field"><label class="ui-label">Documento</label><InputText class="ui-input" @bind-Value="cliente.Documento" /></div>
+      <div class="ui-field"><label class="ui-label">Tipo</label><InputSelect class="ui-input" @bind-Value="cliente.Tipo">@foreach(var t in Enum.GetValues<TipoCliente>()){<option value="@t">@t</option>}</InputSelect></div>
+      <div class="ui-field"><label class="ui-label">Email de contacto</label><InputText class="ui-input" @bind-Value="cliente.EmailContacto" /></div>
+      <div class="ui-field"><label class="ui-label">Teléfono</label><InputText class="ui-input" @bind-Value="cliente.Telefono" /></div>
+    </div>
+    <div class="ui-field"><label class="ui-label">Convenio (si aplica)</label>
+      <InputSelect class="ui-input" @bind-Value="cliente.EntidadConvenioId"><option value="">Sin convenio</option>@foreach(var c in convenios){<option value="@c.Id">@c.Nombre</option>}</InputSelect>
+    </div>
+    <button class="ui-btn ui-btn-primary" type="submit">Guardar cambios</button>
+  </EditForm>
+  <p class="mt-4 text-sm text-slate-600">Para cambiar contraseña o datos de acceso, usa <a class="ui-link" href="Account/Manage">Gestión de cuenta</a>.</p>
+}
+
+@code {
+  private Cliente? cliente;
+  private List<EntidadConvenio> convenios = new();
+  private bool saved;
+  protected override async Task OnInitializedAsync()
+  {
+    convenios = await Db.EntidadesConvenio.Where(e => e.Activa).ToListAsync();
+    var state = await AuthState.GetAuthenticationStateAsync();
+    var uid = state.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    if (uid is null) return;
+    cliente = await ClienteService.GetOrCreateByUserIdAsync(uid);
+  }
+  private async Task Guardar()
+  {
+    if (cliente is null) return;
+    await ClienteService.UpdatePerfilAsync(cliente);
+    saved = true;
+  }
+}

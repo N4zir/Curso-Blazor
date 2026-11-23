@@ -1,0 +1,22 @@
+@page "/empleado/reservas"
+@attribute [Authorize(Policy = "PortalEmpleado")]
+@inject ReservaService ReservaService
+
+<PageTitle>Gestión de reservas</PageTitle>
+<PortalEmpleadoNav />
+<h1 class="text-2xl font-bold">Reservas</h1>
+<div class="mt-4 overflow-x-auto ui-card">
+  <table class="ui-table w-full text-sm">
+    <thead class="bg-slate-50 text-left"><tr><th class="p-3">ID</th><th class="p-3">Salón</th><th class="p-3">Cliente</th><th class="p-3">Inicio</th><th class="p-3">Fin</th><th class="p-3">Estado</th><th class="p-3">Evento</th></tr></thead>
+    <tbody>
+    @foreach(var r in items){
+      <tr class="border-t"><td class="p-3">@r.Id</td><td class="p-3">@r.Salon?.Nombre</td><td class="p-3">@r.Cliente?.NombreRazonSocial</td><td class="p-3">@r.Inicio:g</td><td class="p-3">@r.Fin:g</td><td class="p-3">@r.Estado</td><td class="p-3">@r.Evento?.Titulo</td></tr>
+    }
+    @if(!items.Any()){<tr><td class="p-4 text-slate-500" colspan="7">Sin reservas.</td></tr>}
+    </tbody>
+  </table>
+</div>
+@code {
+  private List<Reserva> items = new();
+  protected override async Task OnInitializedAsync() => items = await ReservaService.ListarGestionAsync();
+}

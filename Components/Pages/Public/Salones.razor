@@ -1,0 +1,53 @@
+@page "/salones"
+@inject SalonService SalonService
+
+<PageTitle>Salones | Cumbre Salones y Congresos</PageTitle>
+<h1 class="text-3xl font-bold">Catálogo de salones</h1>
+<p class="mt-2 text-slate-700">Encuentra el espacio ideal para tu evento. Filtra por tipo y capacidad.</p>
+
+<div class="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+  <div class="ui-field">
+    <label class="ui-label">Tipo</label>
+    <select class="ui-input" @bind="tipoFiltro">
+      <option value="">Todos</option>
+      @foreach (var t in Enum.GetValues<TipoSalon>()) { <option value="@t">@t</option> }
+    </select>
+  </div>
+  <div class="ui-field">
+    <label class="ui-label">Capacidad mínima</label>
+    <input class="ui-input" type="number" min="0" @bind="capacidadMin" />
+  </div>
+  <button class="ui-btn ui-btn-primary" @onclick="Filtrar">Filtrar</button>
+</div>
+
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  @foreach (var s in salones)
+  {
+    <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      @if (!string.IsNullOrWhiteSpace(s.ImagenUrl)) { <img src="@s.ImagenUrl" alt="@s.Nombre" class="h-40 w-full object-cover" /> }
+      <div class="p-4">
+        <div class="text-xs font-semibold uppercase text-indigo-700">@s.Tipo</div>
+        <h3 class="mt-1 font-semibold">@s.Nombre</h3>
+        <p class="mt-1 text-sm text-slate-600">@s.Descripcion</p>
+        <p class="mt-2 text-sm text-slate-700"><strong>Capacidad:</strong> @s.Capacidad · <strong>Tarifa base:</strong> $@s.TarifaBase</p>
+        @if(!string.IsNullOrWhiteSpace(s.EquipamientoBase)){<p class="mt-1 text-xs text-slate-500">@s.EquipamientoBase</p>}
+        <a href="/cotizar?salonId=@s.Id" class="ui-btn ui-btn-primary mt-3">Solicitar cotización</a>
+      </div>
+    </article>
+  }
+</div>
+@if (!salones.Any()) { <p class="mt-6 text-slate-600">No hay salones que coincidan con el filtro.</p> }
+
+@code {
+  private List<Salon> salones = new();
+  private string? tipoFiltro;
+  private int? capacidadMin;
+
+  protected override async Task OnInitializedAsync() => await Cargar();
+  private async Task Filtrar() => await Cargar();
+  private async Task Cargar()
+  {
+    TipoSalon? t = Enum.TryParse<TipoSalon>(tipoFiltro, out var parsed) ? parsed : null;
+    salones = await SalonService.ListarAsync(t, capacidadMin);
+  }
+}

@@ -2,69 +2,93 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
 
-<div class="flex min-h-screen flex-col md:flex-row">
-
-    <main class="flex-1">
-        <div class="flex w-full items-center justify-between border-b border-gray-200 bg-gray-50 px-4">
-            <div class="flex gap-2">
-                @foreach (var link in links)
+<div class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+            <a href="/" class="text-lg font-bold tracking-tight text-slate-900">Cumbre Salones y Congresos</a>
+            <nav class="hidden items-center gap-1 md:flex">
+                @foreach (var l in PublicLinks)
                 {
-                    <NavLink class="ui-btn ui-btn-primary" href="@link.Address" Match="NavLinkMatch.All">
-                        @link.Label
-                    </NavLink>
+                    <NavLink class="rounded px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100" href="@l.Href" Match="NavLinkMatch.All">@l.Label</NavLink>
                 }
-            </div>
-
-            <div class="flex h-14 items-center justify-end">
+                <NavLink class="ui-btn ui-btn-primary ml-2" href="/cotizar">Solicitar cotización</NavLink>
+            </nav>
+            <div class="flex items-center gap-2">
                 <AuthorizeView>
                     <NotAuthorized>
-                        <div class="ui-btn ui-btn-primary">
-                            <NavLink href="Account/Login">Iniciar Sesion</NavLink>
-                        </div>
+                        <a href="Account/Login" class="ui-btn ui-btn-soft">Iniciar sesión</a>
+                        <a href="Account/Register" class="ui-btn ui-btn-primary">Registrarse</a>
                     </NotAuthorized>
                     <Authorized>
-                        <div class="ui-btn-primary ui-btn mx-2">
-                            <NavLink href="Account/Manage"> @context.User.Identity?.Name
-                            </NavLink>
-                        </div>
-                        <div class="ui-btn-primary ui-btn mx-2">
-                            <form action="Account/Logout" method="post">
-                                <AntiforgeryToken />
-                                <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                                <button type="submit">
-                                    Logout
-                                </button>
-                            </form>
-                        </div>
+                        <AuthorizeView Roles="Cliente,ClienteVIP" Context="cctx">
+                            <a href="/cliente" class="ui-btn ui-btn-soft">Mi portal</a>
+                        </AuthorizeView>
+                        <AuthorizeView Roles="Empleado,Marketing,Admin" Context="ectx">
+                            <a href="/empleado" class="ui-btn ui-btn-soft">Gestión</a>
+                        </AuthorizeView>
+                        <a href="Account/Manage" class="rounded px-2 py-1 text-sm text-slate-700 hover:bg-slate-100">@context.User.Identity?.Name</a>
+                        <form action="Account/Logout" method="post" class="inline">
+                            <AntiforgeryToken />
+                            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                            <button type="submit" class="ui-btn ui-btn-soft">Salir</button>
+                        </form>
                     </Authorized>
                 </AuthorizeView>
             </div>
-
         </div>
-    
-        <article class=" px-4 pt-4">
-            @Body
-        </article>
+        <div class="flex flex-wrap gap-1 border-t border-slate-100 px-4 py-2 md:hidden">
+            @foreach (var l in PublicLinks)
+            {
+                <NavLink class="rounded px-2 py-1 text-xs text-slate-700 hover:bg-slate-100" href="@l.Href">@l.Label</NavLink>
+            }
+            <NavLink class="rounded px-2 py-1 text-xs font-semibold text-indigo-700" href="/cotizar">Cotizar</NavLink>
+        </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-4 py-6">
+        @Body
     </main>
+
+    <footer class="mt-10 border-t border-slate-200 bg-white">
+        <div class="mx-auto grid max-w-7xl gap-6 px-4 py-8 text-sm text-slate-600 md:grid-cols-3">
+            <div>
+                <div class="font-semibold text-slate-900">Cumbre Salones y Congresos</div>
+                <p class="mt-2">Producción integral de eventos corporativos, sociales, académicos y congresos.</p>
+            </div>
+            <div>
+                <div class="font-semibold text-slate-900">Servicios</div>
+                <ul class="mt-2 space-y-1"><li>Salones y convenciones</li><li>Producción audiovisual</li><li>Catering y experiencias VIP</li></ul>
+            </div>
+            <div>
+                <div class="font-semibold text-slate-900">Contacto</div>
+                <p class="mt-2">Solicita una cotización y nuestro equipo comercial te asesorará.</p>
+            </div>
+        </div>
+    </footer>
 </div>
 
-<div id="blazor-error-ui" data-nosnippet
-     class="fixed inset-x-0 bottom-0 z-50 hidden bg-yellow-100 px-5 py-2 shadow-[0_-1px_2px_rgba(0,0,0,0.2)]">
-    An unhandled error has occurred.
-    <a href="." class="reload underline">Reload</a>
+<div id="blazor-error-ui" data-nosnippet class="fixed inset-x-0 bottom-0 z-50 hidden bg-yellow-100 px-5 py-2 shadow">
+    Ocurrió un error inesperado.
+    <a href="." class="reload underline">Recargar</a>
     <span class="dismiss absolute right-3 top-2 cursor-pointer">🗙</span>
 </div>
 
 @code {
     private string? currentUrl;
-
-    private List<Link> links = new List<Link>()
-    {
+    private record NavItem(string Label, string Href);
+    private readonly List<NavItem> PublicLinks =
+    [
         new("Inicio", "/"),
-        new( "comentario","/catalogo"),
-        new("Usuario", "/usuario"),
-    };
-
+        new("Nosotros", "/nosotros"),
+        new("Eventos", "/eventos"),
+        new("Congresos", "/congresos"),
+        new("Servicios", "/servicios"),
+        new("Catering", "/catering"),
+        new("Galería", "/galeria"),
+        new("Convenios", "/convenios"),
+        new("Contacto", "/contacto"),
+        new("Salones", "/salones")
+    ];
 
     protected override void OnInitialized()
     {
@@ -78,20 +102,5 @@
         StateHasChanged();
     }
 
-    public void Dispose()
-    {
-        NavigationManager.LocationChanged -= OnLocationChanged;
-    }
-
-    private class Link
-    {
-        public string Label;
-        public string Address;
-
-        public Link(string label, string address)
-        {
-            Label = label;
-            Address = address;
-        }
-    }
+    public void Dispose() => NavigationManager.LocationChanged -= OnLocationChanged;
 }

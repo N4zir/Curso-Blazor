@@ -1,9 +1,14 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace sharpness_sharp.Data;
+namespace CumbreSalonesCongresos.Data;
 
-// Add profile data for application users by adding properties to the ApplicationUser class
 public class ApplicationUser : IdentityUser
 {
+    public string? NombreCompleto { get; set; }
+    public bool EsVip { get; set; }
+    public bool Activo { get; set; } = true;
+    public int? ClienteId { get; set; }
+    public int? EmpleadoId { get; set; }
+    public DateTime CreadoUtc { get; set; } = DateTime.UtcNow;
 }
 

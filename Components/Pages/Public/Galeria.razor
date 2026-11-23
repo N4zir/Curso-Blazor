@@ -1,0 +1,48 @@
+@page "/galeria"
+@inject MarketingService MarketingService
+
+<PageTitle>Galería | Cumbre Salones y Congresos</PageTitle>
+<h1 class="text-3xl font-bold">Galería y casos de éxito</h1>
+<p class="mt-2 text-slate-700">Conoce la calidad y prestigio de los eventos que hemos realizado.</p>
+
+@if (casos.Any())
+{
+  <h2 class="mt-8 text-xl font-semibold">Casos de éxito</h2>
+  <div class="mt-4 grid gap-4 md:grid-cols-2">
+    @foreach (var c in casos)
+    {
+      <article class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        @if (!string.IsNullOrWhiteSpace(c.ImagenUrl)) { <img src="@c.ImagenUrl" alt="@c.Titulo" class="h-48 w-full object-cover" /> }
+        <div class="p-4">
+          <h3 class="font-semibold">@c.Titulo</h3>
+          <p class="mt-1 text-sm text-slate-600">@c.Descripcion</p>
+          @if(!string.IsNullOrWhiteSpace(c.Cliente)){<p class="mt-2 text-xs text-slate-500">Cliente: @c.Cliente</p>}
+        </div>
+      </article>
+    }
+  </div>
+}
+
+@if (items.Any())
+{
+  <h2 class="mt-10 text-xl font-semibold">Galería</h2>
+  <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    @foreach (var g in items)
+    {
+      <figure class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        @if (!string.IsNullOrWhiteSpace(g.Url)) { <img src="@g.Url" alt="@g.Titulo" class="h-44 w-full object-cover" /> }
+        <figcaption class="p-3 text-sm"><span class="font-medium">@g.Titulo</span>@if(!string.IsNullOrWhiteSpace(g.Categoria)){<span class="text-slate-500"> · @g.Categoria</span>}</figcaption>
+      </figure>
+    }
+  </div>
+}
+
+@code {
+  private List<CasoExito> casos = new();
+  private List<GaleriaItem> items = new();
+  protected override async Task OnInitializedAsync()
+  {
+    casos = await MarketingService.CasosAsync();
+    items = await MarketingService.GaleriaAsync();
+  }
+}
