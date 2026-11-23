@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using CumbreSalonesCongresos.Application.Services;
 using CumbreSalonesCongresos.Config;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CumbreSalonesCongresos.API;
 
@@ -8,6 +9,7 @@ public class EventosEndpoints : IEndpoints
 {
     public void MapEndpoints(IEndpointRouteBuilder app)
     {
+        var auth = app.ServiceProvider.GetRequiredService<AuthParams>();
         var g = app.MapGroup("/api").RequireAuthorization();
 
         g.MapGet("/mis-eventos", async (ClaimsPrincipal user, ClienteService clientes, EventoService svc) =>
@@ -20,7 +22,7 @@ public class EventosEndpoints : IEndpoints
 
         g.MapGet("/eventos/{id:int}", async (int id, ClaimsPrincipal user, ClienteService clientes, EventoService svc) =>
         {
-            if (user.IsInRole("Admin") || user.IsInRole("Empleado") || user.IsInRole("Marketing"))
+            if (auth.RolesGestion.Any(rol => user.IsInRole(rol)))
                 return Results.Ok(await svc.GetDetalleAsync(id));
             var uid = user.FindFirstValue(ClaimTypes.NameIdentifier);
             if (uid is null) return Results.Unauthorized();

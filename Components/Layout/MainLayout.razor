@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager NavigationManager
+@inject AuthParams Auth
 
 <div class="min-h-screen bg-slate-50 text-slate-900">
     <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -20,10 +21,10 @@
                         <a href="Account/Register" class="ui-btn ui-btn-primary">Registrarse</a>
                     </NotAuthorized>
                     <Authorized>
-                        <AuthorizeView Roles="Cliente,ClienteVIP" Context="cctx">
+                        <AuthorizeView Roles="@RolesMenuCliente" Context="cctx">
                             <a href="/cliente" class="ui-btn ui-btn-soft">Mi portal</a>
                         </AuthorizeView>
-                        <AuthorizeView Roles="Empleado,Marketing,Admin" Context="ectx">
+                        <AuthorizeView Roles="@RolesMenuGestion" Context="ectx">
                             <a href="/empleado" class="ui-btn ui-btn-soft">Gestión</a>
                         </AuthorizeView>
                         <a href="Account/Manage" class="rounded px-2 py-1 text-sm text-slate-700 hover:bg-slate-100">@context.User.Identity?.Name</a>
@@ -75,6 +76,8 @@
 
 @code {
     private string? currentUrl;
+    private string RolesMenuCliente => $"{Auth.ClienteRole},{Auth.ClienteVipRole}";
+    private string RolesMenuGestion => string.Join(',', Auth.RolesGestion);
     private record NavItem(string Label, string Href);
     private readonly List<NavItem> PublicLinks =
     [

@@ -58,9 +58,9 @@ Api__BaseUrl=https://mi-dominio.com/
 
 `UseAuth` configura Identity y llama a `UseDB` internamente (no llamar ambos). Registra `ApplicationAuthDbContext` como contexto único de Identity + dominio.
 
-Roles sembrados por configuración (`Auth:Roles`): `Admin, Empleado, Marketing, Cocina, Cliente, ClienteVIP`. El admin dev se configura en `appsettings.Development.json` (no usar esa contraseña en producción).
+Los nombres de rol viven en la sección `Auth` (`AdminRole`, `ClienteRole`, `ClienteVipRole`, `EmpleadoRole`, `MarketingRole`, `CocinaRole`) y los usa **todo** el sistema: seed, políticas, menú y endpoints. `Auth:Roles` es sólo para roles adicionales. Cambiar un nombre con `Auth__AdminRole=...` (o en appsettings) alcanza para que el nuevo rol se cree y pase a autorizar. El admin dev se configura en `appsettings.Development.json` (no usar esa contraseña en producción).
 
-Políticas registradas en `Program.cs`: `PortalCliente`, `PortalEmpleado`, `PortalCocina`, `PortalAdmin`.
+Políticas registradas en `Program.cs`: `PortalCliente`, `PortalEmpleado`, `PortalCocina`, `PortalAdmin`, armadas desde `AuthParams` (inyectado como singleton).
 
 ## Módulos implementados (Fases 0–3)
 

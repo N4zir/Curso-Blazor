@@ -21,8 +21,8 @@ namespace CumbreSalonesCongresos.Config
         ///     builder.Services.UseAuth(builder.Configuration);   // con login
         ///     builder.Services.UseDB(builder.Configuration);     // sin login
         /// </summary>
-        public static IServiceCollection UseAuth(this IServiceCollection services, IConfiguration configuration)
-            => services.UseAuth(DatabaseParams.FromConfiguration(configuration));
+        public static IServiceCollection UseAuth(this IServiceCollection services, IConfiguration configuration, AuthParams? auth = null)
+            => services.UseAuth(DatabaseParams.FromConfiguration(configuration), auth ?? AuthParams.FromConfiguration(configuration));
 
         /// <summary>Lo mismo, con los parámetros de la base escritos a mano.</summary>
         /// <remarks>
@@ -30,10 +30,14 @@ namespace CumbreSalonesCongresos.Config
         /// si el IdentityBuilder ya tiene seteado el tipo de rol. Invertir ese orden deja la
         /// aplicación sin RoleManager y hace que [Authorize(Roles = "...")] nunca autorice,
         /// porque el claim de rol no entra en la cookie.
+        ///
+        /// El AuthParams se registra como singleton para que políticas, endpoints y componentes
+        /// lean los MISMOS nombres de rol que usa SeedAuth al crear los roles.
         /// </remarks>
-        public static IServiceCollection UseAuth(this IServiceCollection services, DatabaseParams db)
+        public static IServiceCollection UseAuth(this IServiceCollection services, DatabaseParams db, AuthParams? auth = null)
         {
             services.UseDB(db, conAuth: true);
+            services.AddSingleton(auth ?? new AuthParams());
 
             services.AddCascadingAuthenticationState();
 
@@ -98,7 +102,7 @@ namespace CumbreSalonesCongresos.Config
 
             await db.Database.MigrateAsync();
 
-            var auth = AuthParams.FromConfiguration(app.Configuration);
+            var auth = sp.GetService<AuthParams>() ?? AuthParams.FromConfiguration(app.Configuration);
             var roleManager = sp.GetRequiredService<RoleManager<IdentityRole>>();
 
             foreach (var rol in auth.TodosLosRoles())
@@ -174,18 +178,42 @@ namespace CumbreSalonesCongresos.Config
         /// <summary>Rol del administrador. Siempre se crea, esté o no en Roles.</summary>
         public string AdminRole { get; set; } = "Admin";
 
-        /// <summary>Roles que se crean al arrancar. Agregar uno nuevo es editar la configuración.</summary>
+        /// <summary>
+        /// Roles de los portales. Se usan tanto para sembrarlos como para armar las políticas
+        /// de autorización, el menú y los chequeos de los endpoints: cambiar el nombre acá
+        /// alcanza para todo el sistema.
+        /// </summary>
+        public string ClienteRole { get; set; } = "Cliente";
+        public string ClienteVipRole { get; set; } = "ClienteVIP";
+        public string EmpleadoRole { get; set; } = "Empleado";
+        public string MarketingRole { get; set; } = "Marketing";
+        public string CocinaRole { get; set; } = "Cocina";
+
+        /// <summary>Roles adicionales que se crean al arrancar (fuera de los portales).</summary>
         public string[] Roles { get; set; } = [];
 
         /// <summary>Vacíos ⇒ se crean los roles pero no se siembra el usuario.</summary>
         public string? AdminEmail { get; set; }
         public string? AdminPassword { get; set; }
 
+        public string[] RolesPortalCliente => [ClienteRole, ClienteVipRole, AdminRole];
+        public string[] RolesPortalEmpleado => [EmpleadoRole, MarketingRole, AdminRole];
+        public string[] RolesPortalCocina => [CocinaRole, AdminRole];
+        public string[] RolesGestion => [AdminRole, EmpleadoRole, MarketingRole];
+
         public IEnumerable<string> TodosLosRoles() =>
-            new[] { AdminRole }
-                .Concat(Roles)
-                .Where(r => !string.IsNullOrWhiteSpace(r))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
+            new[]
+            {
+                AdminRole,
+                ClienteRole,
+                ClienteVipRole,
+                EmpleadoRole,
+                MarketingRole,
+                CocinaRole
+            }
+            .Concat(Roles)
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
 
         public static AuthParams FromConfiguration(IConfiguration configuration)
         {

@@ -5,14 +5,15 @@ using CumbreSalonesCongresos.Config;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.UseHttpClient(builder.Configuration);
-builder.Services.UseAuth(builder.Configuration);
+var auth = AuthParams.FromConfiguration(builder.Configuration);
+builder.Services.UseAuth(builder.Configuration, auth);
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("PortalCliente", p => p.RequireRole("Cliente", "ClienteVIP", "Admin"));
-    options.AddPolicy("PortalEmpleado", p => p.RequireRole("Empleado", "Marketing", "Admin"));
-    options.AddPolicy("PortalCocina", p => p.RequireRole("Cocina", "Admin"));
-    options.AddPolicy("PortalAdmin", p => p.RequireRole("Admin"));
+    options.AddPolicy("PortalCliente", p => p.RequireRole(auth.RolesPortalCliente));
+    options.AddPolicy("PortalEmpleado", p => p.RequireRole(auth.RolesPortalEmpleado));
+    options.AddPolicy("PortalCocina", p => p.RequireRole(auth.RolesPortalCocina));
+    options.AddPolicy("PortalAdmin", p => p.RequireRole(auth.AdminRole));
 });
 
 builder.Services.AddScoped<ClienteService>();

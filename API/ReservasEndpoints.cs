@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using CumbreSalonesCongresos.Application.Services;
 using CumbreSalonesCongresos.Config;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CumbreSalonesCongresos.API;
 
@@ -8,6 +9,7 @@ public class ReservasEndpoints : IEndpoints
 {
     public void MapEndpoints(IEndpointRouteBuilder app)
     {
+        var auth = app.ServiceProvider.GetRequiredService<AuthParams>();
         var g = app.MapGroup("/api/reservas").RequireAuthorization();
 
         g.MapGet("/mias", async (ClaimsPrincipal user, ClienteService clientes, ReservaService svc) =>
@@ -23,7 +25,7 @@ public class ReservasEndpoints : IEndpoints
 
         g.MapPost("/{id:int}/cancelar", async (int id, ClaimsPrincipal user, ClienteService clientes, ReservaService svc) =>
         {
-            if (user.IsInRole("Admin") || user.IsInRole("Empleado") || user.IsInRole("Marketing"))
+            if (auth.RolesGestion.Any(rol => user.IsInRole(rol)))
                 return Results.Ok(await svc.CancelarAsync(id));
             var uid = user.FindFirstValue(ClaimTypes.NameIdentifier);
             if (uid is null) return Results.Unauthorized();
