@@ -24,4 +24,4 @@ ENV PORT=10000 \
  
 EXPOSE 10000
  
-ENTRYPOINT ["sh", "-c", "ASPNETCORE_HTTP_PORTS=${PORT} exec dotnet sharpness-sharp.dll"]
+ENTRYPOINT ["sh", "-c", "ASPNETCORE_HTTP_PORTS=${PORT} exec dotnet CumbreSalonesCongresos.dll"]
